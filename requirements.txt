@@ -2,3 +2,4 @@ numpy
 pathlib
 ipykernel
 pandas
+scikit-learn
