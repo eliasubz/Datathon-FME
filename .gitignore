@@ -1,3 +1,4 @@
 .venv/
 data/
-.clean_data/train_features.parquet
+**/*.parquet
+clean_data/
