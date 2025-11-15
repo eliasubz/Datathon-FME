@@ -6,3 +6,4 @@ scikit-learn
 pyarrow 
 fastparquet
 xgboost
+tensorflow
