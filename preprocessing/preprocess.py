@@ -133,7 +133,7 @@ def parse_numeric_column(series: pd.Series) -> np.ndarray:
 def parse_year_column(series: pd.Series) -> np.ndarray:
     num_series = pd.to_numeric(series, errors="coerce")
     arr = num_series.to_numpy(dtype="int32")
-    arr -= 2023
+    arr -= 2022
     return arr.reshape(-1, 1)
 
 what_to_parse = {

@@ -13,3 +13,7 @@ def load_data():
     y = df["weekly_demand"]
     return X, y
     
+if __name__ == "__main__":
+    X, y = load_data()
+    print("Features shape:", X.shape)
+    print("Target shape:", y.shape)
