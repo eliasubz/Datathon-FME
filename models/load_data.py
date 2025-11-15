@@ -9,7 +9,8 @@ path = pathlib.Path(__file__).resolve().parents[1] / "clean_data" / "train.parqu
 def load_data():
     """Load cleaned data from parquet file."""
     df = pd.read_parquet(path)
-    X = df.drop(columns=["weekly_demand"])
+    X = df.drop(columns=["weekly_demand", "Production"])
+
     y = df["weekly_demand"]
     return X, y
     

@@ -52,6 +52,7 @@ DATA_TYPES = {
 # parse options 
 EMBEDDING_DIM = 128  # target dimension after PCA
 NUM_COLORS = 20
+# N_IMAGE_CLUSTERS = 10
 
 # %% READ CSV
 df = pd.read_csv(INPUT_PATH, dtype=DATA_TYPES, delimiter=";")
@@ -101,12 +102,31 @@ def parse_embedding_column(series: pd.Series) -> np.ndarray:
     # Simplified: assume parsing always works and original dim > EMBEDDING_DIM
     # 1) Parse each embedding string into a float32 vector
     parsed = [np.array(s.split(","), dtype="float32") for s in series]
+    # return np.vstack(parsed)
 
     emb_matrix = np.vstack(parsed)
     pca = PCA(n_components=EMBEDDING_DIM)
     reduced = pca.fit_transform(emb_matrix).astype("float32")
 
     return reduced
+
+
+# def parse_embedding_cluster_column(series: pd.Series) -> np.ndarray:
+#     """Cluster image embeddings in latent space and one-hot encode cluster ids.
+
+#     This provides a discrete latent representation as an alternative to PCA.
+#     """
+
+#     parsed = [np.array(s.split(","), dtype="float32") for s in series]
+#     emb_matrix = np.vstack(parsed)
+
+#     kmeans = KMeans(n_clusters=N_IMAGE_CLUSTERS, n_init=10, random_state=42)
+#     labels = kmeans.fit_predict(emb_matrix)
+
+#     num_rows = emb_matrix.shape[0]
+#     one_hot = np.zeros((num_rows, N_IMAGE_CLUSTERS), dtype="float32")
+#     one_hot[np.arange(num_rows), labels] = 1.0
+#     return one_hot
 
 
 def parse_color_column(series: pd.Series) -> np.ndarray:
@@ -136,11 +156,26 @@ def parse_year_column(series: pd.Series) -> np.ndarray:
     arr -= 2022
     return arr.reshape(-1, 1)
 
+
+def parse_week_cosine_basis(series: pd.Series) -> np.ndarray:
+    """Encode ISO week as a 2D sinusoidal basis (cos, sin).
+
+    Weeks are treated as positions on a yearly circle with period 52.
+    """
+
+    weeks = pd.to_numeric(series, errors="coerce").to_numpy(dtype="float32")
+    # Map week index to angle on circle; use 52 as approximate period
+    angles = 2.0 * np.pi * (weeks / 52.0)
+    cos_comp = np.cos(angles).astype("float32")
+    sin_comp = np.sin(angles).astype("float32")
+    return np.stack([cos_comp, sin_comp], axis=1)
+
 what_to_parse = {
     # ensure year and week are first
     parse_year_column: ["year"],
     parse_numeric_column: ["num_week_iso"],
-    # parse_date_column: ["phase_in", "phase_out"],
+    parse_week_cosine_basis: ["num_week_iso"],
+    parse_date_column: ["phase_in", "phase_out"],
     parse_categorical_column: [
         "aggregated_family",
         "family",
@@ -161,6 +196,7 @@ what_to_parse = {
         "moment",
     ],
     parse_embedding_column: ["image_embedding"],
+    # parse_embedding_cluster_column: ["image_embedding"],
     parse_numeric_column: [
         "price",        
         # "weekly_sales",
