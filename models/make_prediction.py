@@ -69,8 +69,12 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     output_path = OUTPUT_DIR / f"{model_path.name}.csv"
 
     # Required submission format: ID;weekly_demand
-    out = agg_df.rename(columns={"prediction": "weekly_demand"})
+    out = agg_df.rename(columns={"prediction": "weekly_demand"}) # type: ignore
+    #convert both cols to int
+    out[ID_COLUMN] = out[ID_COLUMN].astype(int)
+    out["weekly_demand"] = out["weekly_demand"].astype(int)
     out.to_csv(output_path, sep=";", index=False)
+
 
     print(f"Saved predictions for {model_path.name} to {output_path}")
     return out
