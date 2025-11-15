@@ -1,3 +1,4 @@
+# %%
 #!/usr/bin/env python3
 """Print the first line of data/test.csv and data/train.csv.
 
@@ -6,7 +7,7 @@ Usage: python3 scripts/print_first_lines.py
 import sys
 from pathlib import Path
 
-
+# %%
 def print_first_line(path: str) -> None:
     p = Path(path)
     if not p.exists():
