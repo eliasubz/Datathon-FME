@@ -19,7 +19,7 @@ def print_first_line(path: str) -> None:
             if line == "":
                 print(f"{path}: (empty file)")
             else:
-                print(f"{path}: {line.rstrip('\n')}")
+                print(f"{path}: {line.rstrip('\n').split(';')}")
     except Exception as e:
         print(f"{path}: ERROR reading file: {e}", file=sys.stderr)
 
