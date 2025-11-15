@@ -6,13 +6,12 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 # %% CONSTANTS AND PATHS
-DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "data"
-RAW_TRAIN_PATH = DATA_DIR / "train.csv"
-PROCESSED_DIR = pathlib.Path(__file__).resolve().parents[1] / "clean_data"
-PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED_TRAIN_PATH = PROCESSED_DIR / "train_preprocess.csv"
 
-FEATURES_DF_OUTPUT_PATH = PROCESSED_DIR / "train_features.parquet"
+INPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "data"
+INPUT_PATH = INPUT_DIR / "train_subset.csv"
+
+OUTPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "clean_data"
+OUTPUT_PATH = OUTPUT_DIR / "train.parquet"
 
 DATA_TYPES = {
     "ID": "int64",
@@ -55,7 +54,7 @@ EMBEDDING_DIM = 128  # target dimension after PCA
 NUM_COLORS = 20
 
 # %% READ CSV
-df = pd.read_csv(RAW_TRAIN_PATH, dtype=DATA_TYPES, delimiter=";")
+df = pd.read_csv(INPUT_PATH, dtype=DATA_TYPES, delimiter=";")
 
 # %% EXTRA TIME FEATURES
 phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
@@ -162,7 +161,7 @@ what_to_parse = {
     parse_numeric_column: [
         "price",        
         # "weekly_sales",
-        # "weekly_demand",
+        "weekly_demand",
         "Production",
         "num_stores",
         "num_sizes",
@@ -181,19 +180,20 @@ for parse_fn, columns in what_to_parse.items():
         print(f"Parsing column: {col} using {parse_fn.__name__}")
         block = parse_fn(df[col])
 
+        if block.shape[1] == 1:
+            features_df[col] = block
+            continue
         for j in range(block.shape[1]):
             col_name = f"{col}_{j}"
             features_df[col_name] = block[:, j]
 
-# add target to the feature dataframe
-features_df["weekly_demand"] = df["weekly_demand"].to_numpy()
 
 print(f"Features dataframe shape: {features_df.shape}")
-
-
+final_df = features_df.copy()
 
 # %% SAVE OUTPUTS
-FEATURES_DF_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-features_df.to_parquet(FEATURES_DF_OUTPUT_PATH, index=False)
-print("total size:", features_df.to_numpy().shape)
+final_df.to_parquet(OUTPUT_PATH, index=False)
+print("total size:", final_df.to_numpy().shape)
+final_df.head()
