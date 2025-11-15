@@ -8,7 +8,7 @@ from sklearn.cluster import KMeans
 # %% CONSTANTS AND PATHS
 
 INPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "data"
-INPUT_PATH = INPUT_DIR / "train_subset.csv"
+INPUT_PATH = INPUT_DIR / "train.csv"
 
 OUTPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "clean_data"
 OUTPUT_PATH = OUTPUT_DIR / "train.parquet"
@@ -66,6 +66,9 @@ intro_week_index = intro_iso_year * 52 + intro_iso_week
 current_week_index = df["year"] * 52 + df["num_week_iso"]
 
 df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
+
+# sort chronologically: first by year, then by iso week
+df = df.sort_values(["year", "num_week_iso"]).reset_index(drop=True)
 
 # %% PARSING HELPERS
 def parse_date_column(series: pd.Series) -> np.ndarray:
