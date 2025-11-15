@@ -7,13 +7,12 @@ from sklearn.cluster import KMeans
 
 # %% CONSTANTS AND PATHS
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "data"
-RAW_TRAIN_PATH = DATA_DIR / "train_subset.csv"
+RAW_TRAIN_PATH = DATA_DIR / "train.csv"
 PROCESSED_DIR = pathlib.Path(__file__).resolve().parents[1] / "clean_data"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED_TRAIN_PATH = PROCESSED_DIR / "train_preprocessed.csv"
+PROCESSED_TRAIN_PATH = PROCESSED_DIR / "train_preprocess.csv"
 
-NPZ_OUTPUT_PATH = PROCESSED_DIR / "preprocessed" / "train_features.npz"
-LABELS_OUTPUT_PATH = PROCESSED_DIR / "preprocessed_labels" / "train_feature_labels.csv"
+FEATURES_DF_OUTPUT_PATH = PROCESSED_DIR / "train_features.parquet"
 
 DATA_TYPES = {
     "ID": "int64",
@@ -57,7 +56,17 @@ NUM_COLORS = 20
 
 # %% READ CSV
 df = pd.read_csv(RAW_TRAIN_PATH, dtype=DATA_TYPES, delimiter=";")
-df.head()
+
+# %% EXTRA TIME FEATURES
+phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
+iso_cal = phase_in_dt.dt.isocalendar()
+intro_iso_year = iso_cal.year
+intro_iso_week = iso_cal.week
+
+intro_week_index = intro_iso_year * 52 + intro_iso_week
+current_week_index = df["year"] * 52 + df["num_week_iso"]
+
+df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
 
 # %% PARSING HELPERS
 def parse_date_column(series: pd.Series) -> np.ndarray:
@@ -65,6 +74,12 @@ def parse_date_column(series: pd.Series) -> np.ndarray:
     # Convert to nanoseconds since epoch as int64 without using deprecated .view
     int_vals = dt.astype("int64")
     return int_vals.to_numpy().reshape(-1, 1)
+
+def parse_phase_in_iso_week(series: pd.Series) -> np.ndarray:
+    dt = pd.to_datetime(series, format="%d/%m/%Y", errors="coerce")
+    iso_cal = dt.dt.isocalendar()
+    iso_week = iso_cal.week.astype("int32").to_numpy()
+    return iso_week.reshape(-1, 1)
 
 def parse_categorical_column(series: pd.Series) -> np.ndarray:
     # Convert to string, factorize, then one‑hot encode
@@ -152,37 +167,33 @@ what_to_parse = {
         "num_stores",
         "num_sizes",
         "has_plus_sizes",
+        "weeks_on_market",
     ],
     parse_color_column: ["color_rgb"],
+    parse_phase_in_iso_week: ["phase_in"],
 }
 
-# %% BUILD FEATURE MATRIX
-feature_blocks = []
-X_labels: list[str] = []
+# %% BUILD FEATURE DATAFRAME
+features_df = pd.DataFrame(index=df.index)
 
 for parse_fn, columns in what_to_parse.items():
     for col in columns:
         print(f"Parsing column: {col} using {parse_fn.__name__}")
-        parsed_block = parse_fn(df[col])
-        feature_blocks.append(parsed_block)
+        block = parse_fn(df[col])
 
-        # create one label per column in the parsed block
-        block_width = parsed_block.shape[1]
-        for i in range(block_width):
-            X_labels.append(f"{col}_{i}")
+        for j in range(block.shape[1]):
+            col_name = f"{col}_{j}"
+            features_df[col_name] = block[:, j]
 
-y = df["weekly_demand"].to_numpy().reshape(-1, 1)
+# add target to the feature dataframe
+features_df["weekly_demand"] = df["weekly_demand"].to_numpy()
 
-X = np.concatenate(feature_blocks, axis=1)
-X_labels_array = np.array(X_labels, dtype="U50")
+print(f"Features dataframe shape: {features_df.shape}")
 
-print(f"Feature matrix shape: {X.shape}")
-print(f"X_labels shape: {X_labels_array.shape}")
+
 
 # %% SAVE OUTPUTS
-NPZ_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-LABELS_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+FEATURES_DF_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-np.savez(NPZ_OUTPUT_PATH, X=X, y=y, labels=X_labels_array)
-
-pd.DataFrame({"feature_name": X_labels}).to_csv(LABELS_OUTPUT_PATH, index=False)
+features_df.to_parquet(FEATURES_DF_OUTPUT_PATH, index=False)
+print("total size:", features_df.to_numpy().shape)

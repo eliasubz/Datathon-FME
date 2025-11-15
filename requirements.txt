@@ -3,3 +3,5 @@ pathlib
 ipykernel
 pandas
 scikit-learn
+pyarrow 
+fastparquet
