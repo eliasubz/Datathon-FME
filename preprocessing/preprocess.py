@@ -8,11 +8,13 @@ import pathlib
 
 INPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "data"
 TRAIN_INPUT_PATH = INPUT_DIR / "train.csv"
-TEST_INPUT_PATH = INPUT_DIR / "test.csv"
+TEST_INPUT_PATH = INPUT_DIR / "test_extended.csv"
 
 OUTPUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "clean_data"
 TRAIN_OUTPUT_PATH = OUTPUT_DIR / "train.parquet"
-TEST_OUTPUT_PATH = OUTPUT_DIR / "test.parquet"
+TEST_OUTPUT_PATH = OUTPUT_DIR / "test_extended.parquet"
+
+EMBEDDING_DIM = 128  # target dimension after PCA
 
 DATA_TYPES = {
     "ID": "int64",
@@ -58,58 +60,6 @@ fitted and saved by `fit_encoders.py` as JSON files.
 """
 
 # parse options
-EMBEDDING_DIM = 128  # target dimension after PCA
-
-def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFrame:
-    """Apply full feature pipeline to a dataframe.
-
-    For test data, the target columns are ignored by design.
-    """
-
-    df = df.copy()
-
-    # EXTRA TIME FEATURES (only if year and num_week_iso are available)
-    phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
-    iso_cal = phase_in_dt.dt.isocalendar()
-    intro_iso_year = iso_cal.year
-    intro_iso_week = iso_cal.week
-
-    if {"year", "num_week_iso"}.issubset(df.columns):
-        intro_week_index = intro_iso_year * 52 + intro_iso_week
-        current_week_index = df["year"] * 52 + df["num_week_iso"]
-        df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
-        # sort chronologically: first by year, then by iso week
-        df = df.sort_values(["year", "num_week_iso"]).reset_index(drop=True)
-
-    features = []
-
-    for parse_fn, columns in what_to_parse.items():
-        for col in columns:
-            # Skip columns that are not present (e.g. in test vs train)
-            if col not in df.columns:
-                continue
-
-            print(f"Parsing column: {col} using {parse_fn.__name__}")
-
-            if parse_fn is parse_categorical_column:
-                block = parse_fn(df[col], CAT_MAPPINGS, col)
-            elif parse_fn is parse_embedding_column:
-                block = parse_fn(df[col], PCA_PARAMS)
-            elif parse_fn is parse_color_column:
-                block = parse_fn(df[col], COLOR_CENTERS)
-            else:
-                block = parse_fn(df[col])
-
-            if block.shape[1] == 1:
-                features.append(pd.Series(block[:, 0], name=col))
-                continue
-            for j in range(block.shape[1]):
-                col_name = f"{col}_{j}"
-                features.append(pd.Series(block[:, j], name=col_name))
-
-    features_df = pd.concat(features, axis=1)
-    print(f"Features dataframe shape: {features_df.shape}")
-    return features_df
 
 ENCODER_PATH = pathlib.Path(__file__).resolve().parent / "encoders.json"
 
@@ -210,6 +160,61 @@ def parse_week_cosine_basis(series: pd.Series) -> np.ndarray:
     sin_comp = np.sin(angles).astype("float32")
     return np.stack([cos_comp, sin_comp], axis=1)
 
+def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFrame:
+    """Apply full feature pipeline to a dataframe.
+
+    For test data, the target columns are ignored by design.
+    """
+
+    df = df.copy()
+
+    # EXTRA TIME FEATURES (only if year and num_week_iso are available)
+    phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
+    iso_cal = phase_in_dt.dt.isocalendar()
+    intro_iso_year = iso_cal.year
+    intro_iso_week = iso_cal.week
+
+    if {"year", "num_week_iso"}.issubset(df.columns):
+        intro_week_index = intro_iso_year * 52 + intro_iso_week
+        current_week_index = df["year"] * 52 + df["num_week_iso"]
+        df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
+        # sort chronologically: first by year, then by iso week
+        df = df.sort_values(["year", "num_week_iso"]).reset_index(drop=True)
+    else: 
+        print("WARNING: Year and num_week_iso columns not found; skipping weeks_on_market feature.")
+
+    features = []
+
+    for parse_fn, columns in what_to_parse.items():
+        for col in columns:
+            # Skip columns that are not present (e.g. in test vs train)
+            if col not in df.columns:
+                print(f"WARNING: Column '{col}' not found in dataframe; skipping.")
+                continue
+            print(f"Parsing column: {col} using {parse_fn.__name__}")
+
+            if parse_fn is parse_categorical_column:
+                block = parse_fn(df[col], CAT_MAPPINGS, col)
+            elif parse_fn is parse_embedding_column:
+                block = parse_fn(df[col], PCA_PARAMS)
+            elif parse_fn is parse_color_column:
+                block = parse_fn(df[col], COLOR_CENTERS)
+            else:
+                block = parse_fn(df[col])
+
+            if block.shape[1] == 1:
+                features.append(pd.Series(block[:, 0], name=col))
+                continue
+            for j in range(block.shape[1]):
+                col_name = f"{col}_{j}"
+                features.append(pd.Series(block[:, j], name=col_name))
+
+    features_df = pd.concat(features, axis=1)
+    print(f"Features dataframe shape: {features_df.shape}")
+    return features_df
+
+
+
 ENCODERS = load_encoders()
 CAT_MAPPINGS = ENCODERS["categorical_mappings"]
 PCA_PARAMS = ENCODERS["image_embedding_pca"]
@@ -246,11 +251,12 @@ what_to_parse = {
         "price",        
         # "weekly_sales",
         "weekly_demand",
-        "Production",
+        # "Production",
         "num_stores",
         "num_sizes",
         "has_plus_sizes",
         "weeks_on_market",
+        "ID",
     ],
     parse_color_column: ["color_rgb"],
     parse_phase_in_iso_week: ["phase_in"],
@@ -261,7 +267,7 @@ what_to_parse = {
 train_df = pd.read_csv(TRAIN_INPUT_PATH, dtype=DATA_TYPES, delimiter=";")  # type: ignore
 train_features = preprocess_dataframe(train_df, is_test=False)
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 train_features.to_parquet(TRAIN_OUTPUT_PATH, index=False)
 print("Train total size:", train_features.to_numpy().shape)
 
