@@ -4,6 +4,9 @@ This follows the simple script style used in preprocess.py.
 """
 
 # %% IMPORTS
+import pathlib
+import pickle
+
 import xgboost as xgb
 
 import load_data
@@ -38,3 +41,14 @@ y_train_pred = model.predict(X_train)
 print(f"X_train shape: {X_train.shape}, X_test shape: {X_test.shape}")
 print(f"y_train shape: {y_train.shape}, y_test shape: {y_test.shape}")
 metrics.print_regression_report(y_test, y_pred, y_train, y_train_pred)
+
+
+# %% SAVE TRAINED MODEL
+TRAINED_DIR = pathlib.Path(__file__).resolve().parent / "trained"
+TRAINED_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_PATH = TRAINED_DIR / "xgb_model.pkl"
+
+with MODEL_PATH.open("wb") as f:
+	pickle.dump(model, f)
+
+print(f"Saved trained XGBoost model to {MODEL_PATH}")
