@@ -210,8 +210,8 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
 
     # %% ADD AGGREGATED FEATURES
     if not is_test:
-        features.append((df["weekly_demand"]/df["num_stores"]).astype("float32").rename("y"))
-        # features.append(df["weekly_demand"].astype("float32").rename("y"))
+        # features.append((df["weekly_demand"]/df["num_stores"]).astype("float32").rename("y"))
+        features.append(df["weekly_demand"].astype("float32").rename("y"))
     
     out_df = pd.concat(features, axis=1)
     out_df["log_weeks_on_market"] = np.log1p(out_df["weeks_on_market"].clip(lower=0)).astype("float32")

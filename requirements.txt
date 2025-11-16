@@ -10,3 +10,4 @@ tensorflow
 matplotlib
 catboost
 pyyaml
+seaborn
