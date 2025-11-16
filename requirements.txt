@@ -8,3 +8,5 @@ fastparquet
 xgboost
 tensorflow
 matplotlib
+catboost
+pyyaml

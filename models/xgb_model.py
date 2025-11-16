@@ -33,8 +33,8 @@ model = xgb.XGBRegressor(
 	gamma=0.3,
     reg_alpha=0.1,
     reg_lambda=1.0,
-	# early_stopping_rounds=50,
-	# max_bins=256,
+	early_stopping_rounds=50,
+	max_bins=256,
 )
 
 model.fit(
@@ -49,7 +49,7 @@ model.fit(
 y_pred = model.predict(X_test)
 y_train_pred = model.predict(X_train)
 
-metrics.print_regression_report(y_test, y_pred, y_train, y_train_pred)
+metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="xgb_model")
 
 
 # %% SAVE TRAINED MODEL
