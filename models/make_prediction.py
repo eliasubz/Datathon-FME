@@ -7,6 +7,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 from rich_cat import HybridModel
+from hybrid_model import HybridModel2
+from rich_cat2 import HybridModel3
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]

@@ -18,7 +18,8 @@ class HybridModel:
 
     def predict(self, X):
         X_aug = X.copy()
-        X_aug["ridge_pred"] = self.ridge_model.predict(X)
+        X_aug = X_aug.fillna(0)
+        X_aug["ridge_pred"] = self.ridge_model.predict(X_aug)
         return self.cat_model.predict(X_aug)
 
 if __name__ == "__main__":
