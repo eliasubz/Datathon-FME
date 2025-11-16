@@ -169,25 +169,19 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
     df = df.copy()
 
     # EXTRA TIME FEATURES (only if year and num_week_iso are available)
-    phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
-    iso_cal = phase_in_dt.dt.isocalendar()
-    intro_iso_year = iso_cal.year
-    intro_iso_week = iso_cal.week
+    if {"year", "num_week_iso"}.issubset(df.columns):
+        phase_in_dt = pd.to_datetime(df["phase_in"], format="%d/%m/%Y", errors="coerce")
+        iso_cal = phase_in_dt.dt.isocalendar()
+        intro_iso_year = iso_cal.year
+        intro_iso_week = iso_cal.week
+        intro_week_index = intro_iso_year * 52 + intro_iso_week
+        current_week_index = df["year"] * 52 + df["num_week_iso"]
+        df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
+        # sort chronologically: first by year, then by iso week
+        df = df.sort_values(["year", "num_week_iso"]).reset_index(drop=True)
+    else: 
+        print("WARNING: Year and num_week_iso columns not found; skipping weeks_on_market feature.")
 
-    # %% ADD AGGREGATED FEATURES
-    # weeks_on_market
-    intro_week_index = intro_iso_year * 52 + intro_iso_week
-    current_week_index = df["year"] * 52 + df["num_week_iso"]
-    df["weeks_on_market"] = (current_week_index - intro_week_index).astype("float32")
-    df["weeks_on_market"] = np.log1p(df["weeks_on_market"].clip(lower=0)).astype("float32")
-    df["squared_weeks_on_market"] = (df["weeks_on_market"] ** 2).astype("float32")
-    # average price per category
-    category_avg_price = df.groupby("category")["price"].transform("mean")
-    df["category_avg_price"] = category_avg_price.astype("float32")
-    df["price_over_category_avg"] = (df["price"] / category_avg_price).astype("float32")
-
-    # sort chronologically: first by year, then by iso week
-    df = df.sort_values(["year", "num_week_iso"]).reset_index(drop=True)
     features = []
 
     for parse_fn, columns in what_to_parse.items():
@@ -214,9 +208,21 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
                 col_name = f"{col}_{j}"
                 features.append(pd.Series(block[:, j], name=col_name))
 
-    features_df = pd.concat(features, axis=1)
-    print(f"Features dataframe shape: {features_df.shape}")
-    return features_df
+    # %% ADD AGGREGATED FEATURES
+    if not is_test:
+        features.append(df["weekly_demand"].astype("float32").rename("y"))
+    
+    out_df = pd.concat(features, axis=1)
+    out_df["log_weeks_on_market"] = np.log1p(out_df["weeks_on_market"].clip(lower=0)).astype("float32")
+    out_df["squared_weeks_on_market"] = (out_df["weeks_on_market"] ** 2).astype("float32")
+    # average price per category
+    category_avg_price = df.groupby("category")["price"].transform("mean")
+    out_df["category_avg_price"] = category_avg_price.astype("float32")
+    out_df["price_over_category_avg"] = (df["price"] / category_avg_price).astype("float32")
+
+    # ADD OBJECTIVE
+    print(f"Features dataframe shape: {out_df.shape}")
+    return out_df
 
 ENCODERS = load_encoders()
 CAT_MAPPINGS = ENCODERS["categorical_mappings"]
@@ -252,9 +258,6 @@ what_to_parse = {
     # parse_embedding_cluster_column: ["image_embedding"],
     parse_numeric_column: [
         "price",        
-        # "weekly_sales",
-        "weekly_demand",
-        # "Production",
         "num_stores",
         "num_sizes",
         "has_plus_sizes",

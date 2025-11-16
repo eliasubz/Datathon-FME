@@ -34,7 +34,6 @@ model = xgb.XGBRegressor(
     reg_alpha=0.1,
     reg_lambda=1.0,
 	early_stopping_rounds=50,
-	max_bins=256,
 )
 
 model.fit(

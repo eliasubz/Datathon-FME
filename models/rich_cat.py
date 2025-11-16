@@ -55,7 +55,7 @@ if __name__ == "__main__":
         subsample=0.8,
         rsm=0.6,
         od_type="Iter",
-        od_wait=50,
+        od_wait=100,
         verbose=100,
     )
     cat_model.fit(
