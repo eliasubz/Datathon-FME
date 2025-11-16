@@ -16,7 +16,7 @@ OUTPUT_DIR = ROOT / "output"
 
 TEST_FEATURES_PATH = CLEAN_DATA_DIR / "test_extended.parquet"
 ID_COLUMN = "ID"
-MARGIN_FACTOR = 1.1  
+MARGIN_FACTOR = 1.0
 
 
 def load_test_features() -> pd.DataFrame:
@@ -79,6 +79,8 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
 
     print(f"Running predictions for model {model_path.name} on shape {X_test.shape}")
     preds = model.predict(X_test)
+    if hasattr(preds, 'shape') and len(preds.shape) == 2 and preds.shape[1] > 1:
+        preds = preds[:, 0]  # Use only the first column (y)
 
     # Attach ID and aggregate by ID (sum of predictions per ID)
     pred_df = pd.DataFrame({ID_COLUMN: features[ID_COLUMN].values, "prediction": np.asarray(preds, dtype="float64")})
@@ -91,7 +93,7 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     # Required submission format: ID;weekly_demand
     out = agg_df.rename(columns={"prediction": "weekly_demand"}) # type: ignore
     out[ID_COLUMN] = out[ID_COLUMN].astype(int)
-    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR # * X_test["num_stores"]
+    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR 
     out.drop(columns=["weekly_demand"], inplace=True)
     
 

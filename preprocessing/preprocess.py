@@ -210,9 +210,10 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
 
     # %% ADD AGGREGATED FEATURES
     if not is_test:
-        # features.append((df["weekly_demand"]/df["num_stores"]).astype("float32").rename("y"))
         features.append(df["weekly_demand"].astype("float32").rename("y"))
-    
+        features.append((df["weekly_demand"] / df["num_stores"]).astype("float32").rename("y_per_store"))
+        features.append(df["weekly_sales"].astype("float32").rename("y_sales"))
+
     out_df = pd.concat(features, axis=1)
     out_df["log_weeks_on_market"] = np.log1p(out_df["weeks_on_market"].clip(lower=0)).astype("float32")
     out_df["squared_weeks_on_market"] = (out_df["weeks_on_market"] ** 2).astype("float32")
@@ -220,6 +221,29 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
     category_avg_price = df.groupby("category")["price"].transform("mean")
     out_df["category_avg_price"] = category_avg_price.astype("float32")
     out_df["price_over_category_avg"] = (df["price"] / category_avg_price).astype("float32")
+    #Store coverage
+    # Week-over-week change in store count
+    out_df["num_stores_trend"] = out_df.groupby("ID")["num_stores"].diff()
+
+    # Rolling store coverage (3-week)
+    out_df["num_stores_roll3"] = out_df.groupby("ID")["num_stores"].rolling(3).mean().reset_index(level=0, drop=True)
+
+    # Rolling store coverage (8-week)
+    out_df["num_stores_roll8"] = df.groupby("ID")["num_stores"].rolling(8).mean().reset_index(level=0, drop=True)
+    out_df.groupby("ID")["num_stores"].rolling(8).mean().reset_index(level=0, drop=True)
+
+    #Rolling average price
+    out_df["price_roll4"] = df.groupby("ID")["price"].rolling(4).mean().reset_index(level=0, drop=True)
+    out_df["price_roll8"] = df.groupby("ID")["price"].rolling(8).mean().reset_index(level=0, drop=True)
+
+
+    # #Weeks since launch
+    # # Convert to numeric before subtracting
+    # out_df["weeks_since_launch"] = pd.to_numeric(df["num_week_iso"], errors='coerce') - pd.to_numeric(df["phase_in"], errors='coerce')
+    # out_df["weeks_since_launch"] = out_df["weeks_since_launch"].clip(lower=0)   # no negative values
+    # #Weeks until phase-out
+    # out_df["weeks_until_phase_out"] = pd.to_numeric(df["phase_out"], errors='coerce') - pd.to_numeric(df["num_week_iso"], errors='coerce')
+    # out_df["weeks_until_phase_out"] = out_df["weeks_until_phase_out"].clip(lower=0)
 
     # ADD OBJECTIVE
     print(f"Features dataframe shape: {out_df.shape}")

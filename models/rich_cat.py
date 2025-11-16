@@ -26,6 +26,9 @@ if __name__ == "__main__":
     print("[INFO] Loading data...")
     X, y = load_data.load_data()
     X_train, X_test, y_train, y_test = load_data.split_data(X, y)
+    #replace nanas with 0
+    X_train = X_train.fillna(0)
+    X_test = X_test.fillna(0)
 
     # %% TRAIN RIDGE
     print("[INFO] Training Ridge regression...")
