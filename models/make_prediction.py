@@ -1,3 +1,4 @@
+# %%
 import pathlib
 import pickle
 from typing import List
@@ -13,20 +14,35 @@ OUTPUT_DIR = ROOT / "output"
 
 TEST_FEATURES_PATH = CLEAN_DATA_DIR / "test_extended.parquet"
 ID_COLUMN = "ID"
+MARGIN_FACTOR = 1.1  
 
 
 def load_test_features() -> pd.DataFrame:
-    """Load test features, ensuring the ID column is present and first."""
+    """Load test features, attaching ID from the raw extended CSV.
 
-    df = pd.read_parquet(TEST_FEATURES_PATH)
+    The engineered parquet does not include ID, so we read it from
+    `data/test_extended.csv` and align by row order.
+    """
 
-    if ID_COLUMN not in df.columns:
-        raise KeyError(f"Expected ID column '{ID_COLUMN}' in {TEST_FEATURES_PATH}")
+    features_df = pd.read_parquet(TEST_FEATURES_PATH)
 
-    # Ensure ID is the first column for clarity (not strictly required)
-    cols = [ID_COLUMN] + [c for c in df.columns if c != ID_COLUMN]
-    df = df[cols]
-    return df
+    raw_path = ROOT / "data" / "test_extended.csv"
+    raw_df = pd.read_csv(raw_path, delimiter=";")
+
+    if ID_COLUMN not in raw_df.columns:
+        raise KeyError(f"Expected ID column '{ID_COLUMN}' in {raw_path}")
+
+    if len(raw_df) != len(features_df):
+        raise ValueError(
+            f"Row count mismatch between raw ({len(raw_df)}) and features ({len(features_df)})"
+        )
+
+    features_df = features_df.copy()
+    # Add or overwrite ID column at the front
+    if ID_COLUMN in features_df.columns:
+        features_df.drop(columns=[ID_COLUMN], inplace=True)
+    features_df.insert(0, ID_COLUMN, raw_df[ID_COLUMN].to_numpy())
+    return features_df
 
 
 def find_trained_models() -> List[pathlib.Path]:
@@ -54,8 +70,14 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     print(f"Loading model from {model_path}")
     model = load_model(model_path)
 
-    # Drop ID when passing features to the model
-    X_test = features.drop(columns=[ID_COLUMN])
+    X_test = features
+
+    train_feature_names = getattr(model, "feature_names_in_", None)
+    if train_feature_names is not None:
+        missing = [c for c in train_feature_names if c not in X_test.columns]
+        if missing:
+            raise ValueError(f"Test data is missing expected feature(s): {missing}")
+        X_test = X_test[train_feature_names]
 
     print(f"Running predictions for model {model_path.name} on shape {X_test.shape}")
     preds = model.predict(X_test)
@@ -66,14 +88,15 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
 
     # Save to output file with the same basename as the model
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = OUTPUT_DIR / f"{model_path.name}.csv"
+    output_path = OUTPUT_DIR / f"{model_path.name.replace('.pkl', '')}.csv"
 
     # Required submission format: ID;weekly_demand
     out = agg_df.rename(columns={"prediction": "weekly_demand"}) # type: ignore
-    #convert both cols to int
     out[ID_COLUMN] = out[ID_COLUMN].astype(int)
-    out["weekly_demand"] = out["weekly_demand"].astype(int)
-    out.to_csv(output_path, sep=";", index=False)
+    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR
+    out.drop(columns=["weekly_demand"], inplace=True)
+
+    out.to_csv(output_path, sep=",", index=False)
 
 
     print(f"Saved predictions for {model_path.name} to {output_path}")
@@ -95,3 +118,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+# %%
+feature_df = load_test_features()
+feature_df.head()
