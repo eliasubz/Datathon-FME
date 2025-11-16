@@ -50,7 +50,7 @@ if __name__ == "__main__":
         depth=6,
         learning_rate=0.03,
         l2_leaf_reg=3.0,
-        iterations=1500,
+        iterations=3000,
         random_seed=42,
         subsample=0.8,
         rsm=0.6,

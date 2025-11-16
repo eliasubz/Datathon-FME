@@ -210,6 +210,7 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
 
     # %% ADD AGGREGATED FEATURES
     if not is_test:
+        # features.append((df["weekly_demand"]/df["num_stores"]).astype("float32").rename("y"))
         features.append(df["weekly_demand"].astype("float32").rename("y"))
     
     out_df = pd.concat(features, axis=1)
