@@ -38,10 +38,6 @@ def load_test_features() -> pd.DataFrame:
         )
 
     features_df = features_df.copy()
-    # Add or overwrite ID column at the front
-    if ID_COLUMN in features_df.columns:
-        features_df.drop(columns=[ID_COLUMN], inplace=True)
-    features_df.insert(0, ID_COLUMN, raw_df[ID_COLUMN].to_numpy())
     return features_df
 
 

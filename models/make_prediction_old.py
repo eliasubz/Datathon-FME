@@ -54,9 +54,7 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     print(f"Loading model from {model_path}")
     model = load_model(model_path)
 
-    # Drop ID when passing features to the model
-    X_test = features.drop(columns=[ID_COLUMN])
-
+    X_test = features
     print(f"Running predictions for model {model_path.name} on shape {X_test.shape}")
     preds = model.predict(X_test)
 
