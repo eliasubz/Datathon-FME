@@ -8,7 +8,7 @@ import yaml
 from sklearn.metrics import mean_squared_error, r2_score, median_absolute_error
 
 
-def regression_report(y_true, y_pred, y_train_true, y_train_pred, model_name) -> None:
+def regression_report(y_true, y_pred, y_train_true, y_train_pred, model_name, additional_properties: dict = None) -> None:
     """Compute, print, and save common regression metrics.
 
     Parameters
@@ -23,6 +23,8 @@ def regression_report(y_true, y_pred, y_train_true, y_train_pred, model_name) ->
         Predicted train target values.
     model_name : str, optional
         Name of the model (used for saving report).
+    additional_properties : dict, optional
+        A dictionary of additional properties to add to the report.
     """
 
     import pathlib
@@ -48,7 +50,12 @@ def regression_report(y_true, y_pred, y_train_true, y_train_pred, model_name) ->
     report_dict = {
         "mean_absolute_error_over_mean_y": float(mean_err / y_mean),
         "train_mean_absolute_error_over_mean_y_train": float(mean_train_err / y_train_mean),
+        "mean_prediction": float(np.mean(y_pred_arr)),
+        "std_prediction": float(np.std(y_pred_arr)),
     }
+
+    if additional_properties and isinstance(additional_properties, dict):
+        report_dict.update(additional_properties)
 
     # Print to console
     for line in report:

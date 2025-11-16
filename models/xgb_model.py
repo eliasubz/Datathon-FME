@@ -48,7 +48,12 @@ model.fit(
 y_pred = model.predict(X_test)
 y_train_pred = model.predict(X_train)
 
-metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="xgb_model")
+feature_importances = model.feature_importances_
+feature_names = X.columns
+importance_dict = {name: float(score) for name, score in zip(feature_names, feature_importances)}
+additional_properties = {"feature_importance": importance_dict}
+
+metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="xgb_model", additional_properties=additional_properties)
 
 
 # %% SAVE TRAINED MODEL

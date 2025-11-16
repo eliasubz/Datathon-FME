@@ -72,7 +72,13 @@ if __name__ == "__main__":
     hybrid_model = HybridModel(ridge_model, cat_model)
     y_pred = hybrid_model.predict(X_test)
     y_train_pred = hybrid_model.predict(X_train)
-    metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="rich_cat")
+    
+    feature_importances = cat_model.get_feature_importance()
+    feature_names = X_train_aug.columns
+    importance_dict = {name: float(score) for name, score in zip(feature_names, feature_importances)}
+    additional_properties = {"feature_importance": importance_dict}
+
+    metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="rich_cat", additional_properties=additional_properties)
     print("[INFO] Evaluation complete.")
 
     # %% SAVE MODELS

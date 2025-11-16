@@ -91,13 +91,16 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     # Required submission format: ID;weekly_demand
     out = agg_df.rename(columns={"prediction": "weekly_demand"}) # type: ignore
     out[ID_COLUMN] = out[ID_COLUMN].astype(int)
-    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR #* X_test["num_stores"]
+    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR * X_test["num_stores"]
     out.drop(columns=["weekly_demand"], inplace=True)
+    
 
     out.to_csv(output_path, sep=",", index=False)
 
 
     print(f"Saved predictions for {model_path.name} to {output_path}")
+    print(f"mean Production: {out['Production'].mean():.2f}")
+    print(f"standard deviation Production: {out['Production'].std():.2f}")
     return out
 
 

@@ -24,7 +24,7 @@ model = CatBoostRegressor(
     depth=6,
     learning_rate=0.02,
     l2_leaf_reg=3.0,
-    iterations=2000,
+    iterations=1500,
     random_seed=42,
     subsample=0.8,
     rsm=0.6,
@@ -35,6 +35,7 @@ model = CatBoostRegressor(
 
 print("Training CatBoost model...")
 model.fit(
+    # X, y,
     X_train,
     y_train,
     eval_set=(X_test, y_test),
@@ -47,7 +48,12 @@ model.fit(
 y_pred = model.predict(X_test)
 y_train_pred = model.predict(X_train)
 
-metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="catboost_model")
+feature_importances = model.get_feature_importance()
+feature_names = X.columns
+importance_dict = {name: float(score) for name, score in zip(feature_names, feature_importances)}
+additional_properties = {"feature_importance": importance_dict}
+
+metrics.regression_report(y_test, y_pred, y_train, y_train_pred, model_name="catboost_model", additional_properties=additional_properties)
 
 
 # %% SAVE TRAINED MODEL
