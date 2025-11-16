@@ -58,11 +58,6 @@ def regression_report(y_true, y_pred, y_train_true, y_train_pred, model_name) ->
     if model_name:
         reports_dir = pathlib.Path(__file__).resolve().parent / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
-        report_path = reports_dir / f"{model_name}_report.txt"
-        with report_path.open("w") as f:
-            for line in report:
-                f.write(line + "\n")
-        print(f"Saved regression report to {report_path}")
 
         # Save as YAML
         yaml_path = reports_dir / f"{model_name}_report.yaml"
