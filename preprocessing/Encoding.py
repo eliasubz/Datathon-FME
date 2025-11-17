@@ -4,7 +4,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
-from category_encoders import TargetEncoder
 
 
 # Load your datasets
@@ -101,7 +100,7 @@ def build_full_preprocessing_pipeline(df):
     preprocessor = ColumnTransformer(
         transformers=[
             ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False), one_hot_columns),
-            ("target", TargetEncoder(cols=target_encode_columns), target_encode_columns),
+            # ("target", TargetEncoder(cols=target_encode_columns), target_encode_columns),
             ("scaler", StandardScaler(), numeric_columns),  # ← ADD SCALER HERE
         ],
         remainder="drop"  # Drop any remaining columns (instead of passthrough)

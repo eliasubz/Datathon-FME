@@ -236,6 +236,11 @@ def preprocess_dataframe(df: pd.DataFrame, is_test: bool = False) -> pd.DataFram
     out_df["price_roll4"] = df.groupby("ID")["price"].rolling(4).mean().reset_index(level=0, drop=True)
     out_df["price_roll8"] = df.groupby("ID")["price"].rolling(8).mean().reset_index(level=0, drop=True)
 
+    # Number of items per category, family, and aggregated_family
+    out_df["items_per_category"] = df.groupby("category")["ID"].transform("nunique").astype("float32")
+    out_df["items_per_family"] = df.groupby("family")["ID"].transform("nunique").astype("float32")
+    out_df["items_per_aggregated_family"] = df.groupby("aggregated_family")["ID"].transform("nunique").astype("float32")
+
 
     # #Weeks since launch
     # # Convert to numeric before subtracting

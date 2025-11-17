@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # %% EVALUATE
     print("[INFO] Evaluating hybrid model...")
-    hybrid_model = HybridModel(ridge_model, xgb_model)
+    hybrid_model = HybridModel3(ridge_model, xgb_model)
     y_pred = hybrid_model.predict(X_test)
     y_train_pred = hybrid_model.predict(X_train)
     

@@ -17,6 +17,7 @@ def plot_feature_importance_heatmap(reports_dir, output_dir):
     output_path.mkdir(parents=True, exist_ok=True)
 
     all_importances = {}
+    r = list(reports_path.glob("*_report.yaml"))
     for report_file in reports_path.glob("*_report.yaml"):
         model_name = report_file.stem.replace("_report", "")
         with open(report_file, 'r') as f:
@@ -45,6 +46,6 @@ def plot_feature_importance_heatmap(reports_dir, output_dir):
     print(f"Heatmap saved to {heatmap_path}")
 
 if __name__ == "__main__":
-    REPORTS_DIR = "../models/reports_per_store"
-    OUTPUT_DIR = "output"
+    REPORTS_DIR = "models/reports"
+    OUTPUT_DIR = "plotting/output"
     plot_feature_importance_heatmap(REPORTS_DIR, OUTPUT_DIR)

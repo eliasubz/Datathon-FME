@@ -95,7 +95,8 @@ def make_predictions_for_model(model_path: pathlib.Path, features: pd.DataFrame)
     # Required submission format: ID;weekly_demand
     out = agg_df.rename(columns={"prediction": "weekly_demand"}) # type: ignore
     out[ID_COLUMN] = out[ID_COLUMN].astype(int)
-    out["Production"] = out["weekly_demand"] * MARGIN_FACTOR 
+    out["Production"] = (out["weekly_demand"] * MARGIN_FACTOR ).map(lambda x: max(x, 0.0))
+    
     out.drop(columns=["weekly_demand"], inplace=True)
     
 

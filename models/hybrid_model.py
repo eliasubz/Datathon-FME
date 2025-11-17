@@ -27,8 +27,9 @@ class HybridModel2:
 
         # Get multi-head CatBoost predictions
         multihead_preds = self.multihead_cat_model.predict(X_aug)
-        # X_aug["multihead_pred_y"] = multihead_preds[:, 0]
+        X_aug["multihead_pred_y"] = multihead_preds[:, 0]
         X_aug["multihead_pred_y_per_store"] = multihead_preds[:, 1]
+        X_aug["multihead_pred_y_sales"] = multihead_preds[:, 2]
 
         return self.final_cat_model.predict(X_aug)
 
@@ -70,8 +71,9 @@ if __name__ == "__main__":
         
         # Add multi-head CatBoost predictions
         multihead_preds = multihead_model.predict(X)
-        # X_aug["multihead_pred_y"] = multihead_preds[:, 0]
+        X_aug["multihead_pred_y"] = multihead_preds[:, 0]
         X_aug["multihead_pred_y_per_store"] = multihead_preds[:, 1]
+        X_aug["multihead_pred_y_sales"] = multihead_preds[:, 2]
         
         return X_aug
 
@@ -83,22 +85,22 @@ if __name__ == "__main__":
     final_cat_model = CatBoostRegressor(
         loss_function="RMSE",
         depth=6,
-        learning_rate=0.03,
+        learning_rate=0.01,
         l2_leaf_reg=3.0,
-        iterations=1500,
+        iterations=3000,
         random_seed=42,
         subsample=0.8,
         rsm=0.6,
-        # od_type="Iter",
-        # od_wait=100,
+        od_type="Iter",
+        od_wait=100,
         verbose=100,
     )
     final_cat_model.fit(
-        X, y
-        # X_train_aug,
-        # y_train,
-        # eval_set=(X_test_aug, y_test),
-        # use_best_model=True,
+        # X, y
+        X_train_aug,
+        y_train,
+        eval_set=(X_test_aug, y_test),
+        use_best_model=True,
     )
     print("[INFO] Final CatBoost training complete.")
 
